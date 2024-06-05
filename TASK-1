@@ -1,0 +1,145 @@
+//Smart health monitor system
+#include <LiquidCrystal.h>
+// Define the analog pins for the temperature sensor and the potentiometer
+const int tempSensorPin = A2;
+const int potentiometerPin = A2;
+ const int flexPin1 = A1; // Pin connected to the first flex sensor
+const int flexPin2 = A1;
+// Variables to store sensor readings
+int temperatureRaw;
+float temperature;
+// Constants for temperature conversion
+const float tempConversionFactor = 0.48828125; // This value is based on the LM35 temperature sensor's conversion formula
+const float tempOffset = 2.5; // This value might vary depending on the sensor
+// Constants for heart rate conversion
+int heartRateRaw;
+int heartRateBPM;
+const int HeartratePin = A0;
+const int minHeartRate = 60; // Minimum BPM
+const int maxHeartRate = 185; // Maximum BPM
+int systolicPressure;
+int diastolicPressure;
+// Constants for photodiode
+const int ledPin = 9;    // LED connected to digital pin 3
+const int photoPin = A0; // Photodiode connected to analog pin A0
+int brightness=0;
+//LCD 
+LiquidCrystal lcd(8, 2, 6, 5, 4, 3); //Parameters: (rs, enable, d4, d5, d6, d7)
+//WIFI module variables
+String ssid     = "Simulator Wifi";  // SSID to connect to
+String password = "";   //virtual wifi has no password 
+String host     = "api.thingspeak.com"; // Open Weather Map API
+const int httpPort   = 80;
+String url     = "/update?api_key=TFZHFTWFM1KJ2I5T&field1="; //ThingSpeak Channel API Key
+//setting up the wifi module
+void setupESP8266(void)    
+{
+  // Start our ESP8266 Serial Communication
+  Serial.begin(115200);   // Baud rate 
+  Serial.println("AT");   // Serial connection on Tx / Rx port to ESP8266
+  delay(10);              // Wait a little for the ESP to respond 
+  if (Serial.find("OK"))
+    Serial.println("ESP8266 OK!!!");  // Connect to Simulator Wifi
+  
+  Serial.println("AT+CWJAP=\"" + ssid + "\",\"" + password + "\""); //AT+CWLAP – list nearby available WiFi networks
+  delay(10);                         // Wait a little for the ESP to respond
+  
+  if (Serial.find("OK"))
+    Serial.println("Connected to WiFi!!!");     // Open TCP connection to the host:
+ 
+  //ESP8266 connects to the server as a TCP client. 
+ 
+  Serial.println("AT+CIPSTART=\"TCP\",\"" + host + "\"," + httpPort);
+  delay(50);                                   // Wait a little for the ESP to respond
+  
+  if (Serial.find("OK")) 
+   Serial.println("ESP8266 Connected to server!!!") ;
+}
+
+//Sends data to Thingspeak
+void send_data(void) 
+{
+  // Construct HTTP call
+   String httpPacket = "GET " + url + String(temperature) + "&field2=" + String(heartRateBPM) + "&field3=" + String(systolicPressure) + "/" + String(diastolicPressure) + "&field4=" + String(brightness) + " HTTP/1.1\r\nHost: " + host + "\r\n\r\n";
+  int length = httpPacket.length();
+  // Send our message length
+  Serial.print("AT+CIPSEND=");
+  Serial.println(length);
+  delay(10);        // Wait a little for the ESP to respond if (!Serial.find(">")) return -1;
+  // Send our http request
+  Serial.print(httpPacket);
+  delay(10);       // Wait a little for the ESP to respond
+  if (Serial.find("SEND OK\r\n"))
+    Serial.println("ESP8266 sends data to the server");
+}
+
+void setup() {
+  pinMode(ledPin, OUTPUT);
+  lcd.begin(16,2);
+  // Initialize serial communication
+  Serial.begin(9600);
+}
+
+void loop() {
+  // Read analog values from temperature sensor and potentiometer
+  temperatureRaw = analogRead(tempSensorPin);
+  heartRateRaw = analogRead(HeartratePin);
+   int flexValue1 = analogRead(flexPin1); // Read the analog value from the first flex sensor
+   int flexValue2 = analogRead(flexPin2);
+  // Convert raw values to meaningful units
+  temperature = (temperatureRaw * tempConversionFactor) + tempOffset;
+  heartRateBPM = map(heartRateRaw, 0, 1023, minHeartRate, maxHeartRate);
+  // Print the values to the serial monitor
+  Serial.print("Temperature: ");
+  Serial.print(temperature);
+  Serial.print(" Fahrenheit\t");
+  delay(2000);
+  lcd.setCursor(0,0);        // adjust cursor
+  lcd.print("Temp: ");
+  lcd.print(temperature);      
+  lcd.print("celcius");
+
+  Serial.print("Heart Rate: ");
+  Serial.print(heartRateBPM);
+  Serial.println(" BPM");
+  // Add a delay to prevent serial output from being too fast
+ lcd.setCursor(0,1);        // adjust cursor
+  lcd.print("HeartRate:");
+  lcd.print(heartRateBPM);      
+  lcd.print("BPM");
+ 
+     // Read the analog value from the second flex sensor
+ // Pin connected to the second flex sensor
+  
+    int systolicPressure = map(flexValue1, 0, 1084, 0, 149); // Map the analog value to a systolic pressure range (0-200)
+    int diastolicPressure = map(flexValue2, 0,1084, 0, 114); // Map the analog value to a diastolic pressure range (0-120)
+
+   Serial.print("Blood pressure: ");
+    Serial.print(systolicPressure);
+    Serial.print("/");
+    Serial.println(diastolicPressure);
+    delay(2000); // Delay for stability
+  lcd.setCursor(0,0);        // adjust cursor
+  lcd.print("BP:      ");
+  lcd.print(systolicPressure);      
+  lcd.print("/");
+  lcd.print(diastolicPressure);
+  
+ 
+  int lightIntensity = analogRead(photoPin); // Read the light intensity from the photodiode
+  brightness = map(lightIntensity, 0, 1023, 0, 102); // Map light intensity to LED brightness range
+  analogWrite(ledPin, brightness);
+  Serial.print("pulse oximetry(spo2)level: ");
+  Serial.print(brightness);
+  Serial.println("%");
+
+  lcd.setCursor(0,1);        // adjust cursor
+  lcd.print("spo2 level:  ");
+  lcd.print(brightness);      
+  lcd.print("%");
+   delay(2000);
+   //send data to thingspeak
+   send_data();
+  delay(1000);
+}
+  
