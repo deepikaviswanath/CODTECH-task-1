@@ -1,8 +1,13 @@
 Name : DEEPIKA M
+
 Company : CODTECH IT SOLUTIONS
+
 ID : CT12IOT119
+
 Domain : Internet of Things
+
 Duration : May to july 2024
+
 Mentor : SRAVANI GOUNI
 
 Overview of the project
