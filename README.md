@@ -20,7 +20,9 @@ The objective of this project is to leverage connected devices and sensors to co
 
 Key activities
 •	Real-Time monitoring:provide continuous real-time tracking of vital signs such as heart rate,blood pressure,glucose levels,oxygen etc.
+
 •	Remote access: Enable healthcare providers to access patient data remotely,facilitating tele medicine and reducing the need for in-person visits.
+
 •	Cost reduction:Decreases healthcare costs by reducing hospital readmissions,minimizing emergency room visits.
 
 Technology used:Thinkercad
